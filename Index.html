@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSRS Wiki Drop Simulator</title>
+
+  <style>
+    :root {
+      --bg: #1f1b16;
+      --panel: #2d261d;
+      --panel-dark: #15120e;
+      --panel-mid: #3a3125;
+      --border: #8b6f3f;
+      --gold: #ffd166;
+      --text: #f5e6c8;
+      --muted: #cbb894;
+      --good: #58d68d;
+      --danger: #ff8c8c;
+      --blue: #85c1e9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: auto;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    h1, h2, h3 { color: var(--gold); text-align: center; }
+    h1 { margin-bottom: 8px; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin: 20px 0;
+      background: var(--panel-dark);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .control-row.left {
+      justify-content: flex-start;
+    }
+
+    label { font-weight: bold; }
+
+    select, input[type="text"], input[type="number"] {
+      background: var(--panel-dark);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    input[type="text"] { min-width: min(100%, 520px); flex: 1; }
+    select { min-width: min(100%, 560px); max-width: 100%; }
+    input[type="number"] { width: 92px; }
+
+    .search-wrap {
+      position: relative;
+      min-width: min(100%, 560px);
+      flex: 1;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .suggestion-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      background: var(--panel-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.45);
+      max-height: 285px;
+      overflow-y: auto;
+      z-index: 50;
+      padding: 6px;
+    }
+
+    .suggestion-panel.hidden { display: none; }
+
+    .suggestion-option, .suggestion-empty {
+      width: 100%;
+      display: block;
+      text-align: left;
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .suggestion-option:hover, .suggestion-option.active {
+      background: #3a3125;
+      color: #ffffff;
+    }
+
+    .suggestion-empty {
+      color: var(--muted);
+      cursor: default;
+    }
+
+    .checkbox-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #241e17;
+      border: 1px solid rgba(139,111,63,0.75);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-card input { transform: scale(1.15); }
+
+    button {
+      background: #b8872f;
+      color: white;
+      border: none;
+      padding: 13px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 3px;
+    }
+
+    button:hover { background: #d49a36; }
+    button.secondary { background: #66523a; }
+    button.secondary:hover { background: #7a6348; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .status-box, .source-note {
+      max-width: 980px;
+      margin: 12px auto 20px auto;
+      padding: 12px 15px;
+      background: var(--panel-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .status-box strong { color: var(--gold); }
+    .status-box.error { color: var(--danger); border-color: var(--danger); }
+    .status-box.good { color: var(--good); border-color: var(--good); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .stat-box {
+      background: var(--panel-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      min-height: 82px;
+    }
+
+    .stat-box strong {
+      display: block;
+      font-size: 20px;
+      color: #ffffff;
+      margin-top: 6px;
+      word-break: break-word;
+    }
+
+    .latest-drop, .collection-log, .history {
+      margin-top: 26px;
+      background: var(--panel-dark);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid rgba(139, 111, 63, 0.55);
+    }
+
+    .collection-log, .history {
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .drop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+      gap: 10px;
+    }
+
+    .drop-item {
+      padding: 10px;
+      background: var(--panel-mid);
+      border-left: 5px solid #aaa;
+      border-radius: 7px;
+      margin: 8px 0;
+    }
+
+    .drop-card-content {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .item-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-right: 10px;
+    }
+
+    .item-icon {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+
+    .item-icon.small { width: 24px; height: 24px; }
+
+    .Always { border-left-color: #ffffff; }
+    .Common { border-left-color: #cccccc; }
+    .Uncommon { border-left-color: #5dade2; }
+    .Rare { border-left-color: #af7ac5; }
+    .Very-Rare, .VeryRare { border-left-color: #f4d03f; }
+    .Unique { border-left-color: #ff8c00; }
+    .Tertiary { border-left-color: #58d68d; }
+    .Wiki { border-left-color: var(--blue); }
+    .Skipped { border-left-color: #ff8c8c; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #5c4b35;
+      padding: 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--gold);
+      position: sticky;
+      top: 0;
+      background: var(--panel-dark);
+      z-index: 1;
+    }
+
+    .small-note {
+      font-size: 13px;
+      opacity: 0.92;
+      text-align: center;
+      margin-top: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .valuable { color: var(--gold); font-weight: bold; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #4a3c2b;
+      color: #f8e4b7;
+      margin-left: 5px;
+      margin-top: 2px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .settings-card {
+      background: #241e17;
+      border: 1px solid rgba(139,111,63,0.75);
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 0;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      input[type="text"], select, .search-wrap { min-width: 100%; width: 100%; }
+      .control-row { justify-content: stretch; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Old School RuneScape Wiki Drop Simulator</h1>
+    <p class="small-note">Search or choose a source: NPCs or clue reward caskets. The simulator loads visible OSRS Wiki tables in your browser.</p>
+
+    <div class="controls">
+      <div class="control-row">
+        <label for="sourceSearch">Search:</label>
+        <div class="search-wrap">
+          <input id="sourceSearch" autocomplete="off" placeholder="Try: Zulrah, Revenant dragon, Reward casket (hard)" />
+          <div id="suggestionPanel" class="suggestion-panel hidden"></div>
+        </div>
+        <button id="loadSourceButton" onclick="loadSourceFromSearch()">Load</button>
+        <button class="secondary" id="loadListButton" onclick="loadNpcList()">Load full NPC list</button>
+      </div>
+
+      <div class="control-row">
+        <label for="sourceSelect">Dropdown:</label>
+        <select id="sourceSelect" onchange="loadSourceFromSelect()">
+          <option value="">Choose a source</option>
+        </select>
+      </div>
+
+      <div class="settings-grid">
+        <div class="settings-card compact">
+          <label class="checkbox-card" title="Some NPC pages include Wilderness-only or Wilderness Slayer cave sections. This decides whether those rows are included.">
+            <input type="checkbox" id="includeWilderness" onchange="reloadCurrentSourceAfterOptionChange()" />
+            Include Wilderness-specific loot
+          </label>
+        </div>
+
+        <div class="settings-card compact">
+          <label class="checkbox-card" title="For revenant tables with different columns, the parser tries to select the skulled rate column.">
+            <input type="checkbox" id="revenantSkulled" onchange="reloadCurrentSourceAfterOptionChange()" />
+            Revenants: skulled
+          </label>
+        </div>
+
+        <div class="settings-card compact">
+          <label class="checkbox-card" title="For revenant tables with task-specific columns, the parser tries to select the on-task rate column.">
+            <input type="checkbox" id="revenantOnTask" onchange="reloadCurrentSourceAfterOptionChange()" />
+            Revenants: on Slayer task
+          </label>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <button id="actionButton" onclick="simulateAction()" disabled>Roll</button>
+        <button class="secondary" id="action10Button" onclick="simulateMany(10)" disabled>Roll 10</button>
+        <button class="secondary" id="action100Button" onclick="simulateMany(100)" disabled>Roll 100</button>
+        <button class="secondary" onclick="resetSimulator()">Reset</button>
+      </div>
+    </div>
+
+    <div class="source-note" id="sourceNote">No source loaded yet. Use the search bar, choose from the dropdown, or load the full NPC list.</div>
+    <div class="status-box" id="statusBox">Starter NPCs and reward caskets are ready. Press “Load full NPC list” to add every NPC from the Wiki category.</div>
+
+    <div class="stats">
+      <div class="stat-box">Source<strong id="activeSource">-</strong></div>
+      <div class="stat-box">Actions<strong id="actionCount">0</strong></div>
+      <div class="stat-box">Total Value<strong id="totalValue">0 gp</strong></div>
+      <div class="stat-box">Best Drop<strong id="bestDrop">None</strong></div>
+    </div>
+
+    <div class="collection-log">
+      <h2>Total Loot</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Amount</th>
+            <th>Times Received</th>
+            <th>Total Value</th>
+          </tr>
+        </thead>
+        <tbody id="collectionLog"></tbody>
+      </table>
+    </div>
+
+    <div class="latest-drop">
+      <h2>Latest Loot</h2>
+      <div id="latestDrop">Load a source first, then press the roll button.</div>
+    </div>
+
+    <div class="history">
+      <h2>Loot History</h2>
+      <div id="history"></div>
+    </div>
+
+    <p class="small-note">
+      Generic Wiki-table simulator. Complex mechanics like rare-drop-table nesting and unusual page layouts may still be approximate.
+    </p>
+  </div>
+
+  <script>
+    const WIKI_API = "https://oldschool.runescape.wiki/api.php";
+
+    const REWARD_SOURCES = [
+      { label: "Reward casket (beginner)", page: "Reward casket (beginner)", type: "casket", actionWord: "Open", rollsMin: 1, rollsMax: 3, aliases: ["beginner clue", "beginner casket"] },
+      { label: "Reward casket (easy)", page: "Reward casket (easy)", type: "casket", actionWord: "Open", rollsMin: 2, rollsMax: 4, aliases: ["easy clue", "easy casket"] },
+      { label: "Reward casket (medium)", page: "Reward casket (medium)", type: "casket", actionWord: "Open", rollsMin: 3, rollsMax: 5, aliases: ["medium clue", "medium casket"] },
+      { label: "Reward casket (hard)", page: "Reward casket (hard)", type: "casket", actionWord: "Open", rollsMin: 4, rollsMax: 6, aliases: ["hard clue", "hard casket"] },
+      { label: "Reward casket (elite)", page: "Reward casket (elite)", type: "casket", actionWord: "Open", rollsMin: 4, rollsMax: 6, aliases: ["elite clue", "elite casket"] },
+      { label: "Reward casket (master)", page: "Reward casket (master)", type: "casket", actionWord: "Open", rollsMin: 5, rollsMax: 7, aliases: ["master clue", "master casket"] }
+    ];
+
+    const STARTER_NPC_SOURCES = [
+      "Zulrah",
+      "King Black Dragon",
+      "Abyssal demon",
+      "Revenant dragon",
+      "Vorkath",
+      "Araxxor",
+      "Alchemical Hydra",
+      "General Graardor",
+      "Commander Zilyana",
+      "Kree'arra",
+      "K'ril Tsutsaroth",
+      "Dagannoth Rex",
+      "Cerberus",
+      "Giant Mole",
+      "Kalphite Queen",
+      "Thermonuclear smoke devil"
+    ].map(name => ({ label: name, page: name, type: "npc", actionWord: "Kill", rollsMin: 1, rollsMax: 1 }));
+
+    // Revenants need special handling. The Wiki pages expose a shared revenant drop list,
+    // but the exact weapon rates depend on the revenant, skulled state, and Wilderness Slayer task.
+    // These denominators are for each specific weapon: Craw's bow (u), Thammaron's sceptre (u),
+    // and Viggora's chainmace (u). On-task is 5x more common than off-task for the weapons.
+    const REVENANT_WEAPON_RATES = {
+      "revenant imp":        { unskulled_off_task: 146655, skulled_off_task: 80660,  unskulled_on_task: 29331, skulled_on_task: 16132 },
+      "revenant goblin":     { unskulled_off_task: 98080,  skulled_off_task: 53945,  unskulled_on_task: 19616, skulled_on_task: 10789 },
+      "revenant pyrefiend":  { unskulled_off_task: 41865,  skulled_off_task: 23025,  unskulled_on_task: 8373,  skulled_on_task: 4605 },
+      "revenant hobgoblin":  { unskulled_off_task: 41865,  skulled_off_task: 23025,  unskulled_on_task: 8373,  skulled_on_task: 4605 },
+      "revenant cyclops":    { unskulled_off_task: 32525,  skulled_off_task: 17890,  unskulled_on_task: 6505,  skulled_on_task: 3578 },
+      "revenant hellhound":  { unskulled_off_task: 32525,  skulled_off_task: 17890,  unskulled_on_task: 6505,  skulled_on_task: 3578 },
+      "revenant demon":      { unskulled_off_task: 32525,  skulled_off_task: 17890,  unskulled_on_task: 6505,  skulled_on_task: 3578 },
+      "revenant ork":        { unskulled_off_task: 29330,  skulled_off_task: 16135,  unskulled_on_task: 5866,  skulled_on_task: 3227 },
+      "revenant dark beast": { unskulled_off_task: 29330,  skulled_off_task: 16135,  unskulled_on_task: 5866,  skulled_on_task: 3227 },
+      "revenant knight":     { unskulled_off_task: 26665,  skulled_off_task: 14665,  unskulled_on_task: 5333,  skulled_on_task: 2933 },
+      "revenant dragon":     { unskulled_off_task: 26665,  skulled_off_task: 14665,  unskulled_on_task: 5333,  skulled_on_task: 2933 }
+    };
+
+    const REVENANT_WEAPON_NAMES = [
+      "Craw's bow (u)",
+      "Thammaron's sceptre (u)",
+      "Viggora's chainmace (u)"
+    ];
+
+    // When skulled, the revenant rare table removes the lower-value rare rewards.
+    // This prevents impossible skulled drops such as Dragon med helm.
+    const REVENANT_SKULLED_EXCLUDED_NAMES = new Set([
+      "dragon med helm",
+      "ancient emblem",
+      "ancient totem"
+    ]);
+
+    const loadedSources = {};
+    const suggestionMap = new Map();
+    let currentSourceKey = null;
+    let currentSourceMeta = null;
+    let actionCount = 0;
+    let totalValue = 0;
+    let bestDropValue = 0;
+    let bestDropName = "None";
+    let collectionLog = {};
+    let npcListLoaded = false;
+
+    const iconOverrides = {
+      "Rare drop table roll": "Crystal_key.png",
+      "Kbd heads": "Kbd_heads.png",
+      "Prince black dragon": "Prince_black_dragon.png",
+      "Pet snakeling": "Pet_snakeling.png",
+      "Zulrah's scales": "Zulrah%27s_scales.png",
+      "Antidote++(4)": "Antidote%2B%2B%284%29.png",
+      "Clue scroll (beginner)": "Clue_scroll_%28beginner%29.png",
+      "Clue scroll (easy)": "Clue_scroll_%28easy%29.png",
+      "Clue scroll (medium)": "Clue_scroll_%28medium%29.png",
+      "Clue scroll (hard)": "Clue_scroll_%28hard%29.png",
+      "Clue scroll (elite)": "Clue_scroll_%28elite%29.png",
+      "Clue scroll (master)": "Clue_scroll_%28master%29.png",
+      "Reward casket (beginner)": "Reward_casket_%28beginner%29.png",
+      "Reward casket (easy)": "Reward_casket_%28easy%29.png",
+      "Reward casket (medium)": "Reward_casket_%28medium%29.png",
+      "Reward casket (hard)": "Reward_casket_%28hard%29.png",
+      "Reward casket (elite)": "Reward_casket_%28elite%29.png",
+      "Reward casket (master)": "Reward_casket_%28master%29.png",
+      "Coins": "Coins_10000.png"
+    };
+
+    function init() {
+      REWARD_SOURCES.forEach(source => registerSuggestion(source));
+      STARTER_NPC_SOURCES.forEach(source => registerSuggestion(source));
+      renderDatalist();
+      setStatus("Starter NPCs and reward caskets are ready. Press “Load full NPC list” to add every NPC from the Wiki category.", "good");
+    }
+
+    function normalize(text) {
+      return cleanText(text).toLowerCase();
+    }
+
+    function registerSuggestion(source) {
+      const sourceCopy = { ...source, key: source.key || `wiki:${source.page}:${source.type || "npc"}` };
+      suggestionMap.set(sourceCopy.key, sourceCopy);
+      suggestionMap.set(normalize(sourceCopy.label), sourceCopy);
+      suggestionMap.set(normalize(sourceCopy.page), sourceCopy);
+      (sourceCopy.aliases || []).forEach(alias => suggestionMap.set(normalize(alias), sourceCopy));
+    }
+
+    function getUniqueSuggestions() {
+      const byKey = new Map();
+      [...suggestionMap.values()].forEach(source => {
+        if (source && source.key) byKey.set(source.key, source);
+      });
+      return [...byKey.values()].sort((a, b) => (a.label || a.page).localeCompare(b.label || b.page));
+    }
+
+    function renderDatalist() {
+      renderSourceSelect();
+      updateSuggestionPanel(false);
+    }
+
+    function renderSourceSelect() {
+      const select = document.getElementById("sourceSelect");
+      if (!select) return;
+      const currentValue = select.value;
+      const suggestions = getUniqueSuggestions();
+      const caskets = suggestions.filter(source => source.type === "casket");
+      const npcs = suggestions.filter(source => source.type === "npc");
+
+      select.innerHTML = `<option value="">Choose a source</option>`;
+      addSourceOptgroup(select, "Clue reward caskets", caskets);
+      addSourceOptgroup(select, npcListLoaded ? "NPCs" : "Starter NPCs", npcs);
+
+      if ([...select.options].some(option => option.value === currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    function addSourceOptgroup(select, label, sources) {
+      if (!sources.length) return;
+      const group = document.createElement("optgroup");
+      group.label = label;
+      sources.forEach(source => {
+        const option = document.createElement("option");
+        option.value = source.key;
+        option.textContent = source.label || source.page;
+        group.appendChild(option);
+      });
+      select.appendChild(group);
+    }
+
+    async function loadSourceFromSelect() {
+      const select = document.getElementById("sourceSelect");
+      const key = select?.value;
+      if (!key) return;
+      await chooseSuggestionByKey(key);
+    }
+
+    function updateSuggestionPanel(forceOpen = false) {
+      const input = document.getElementById("sourceSearch");
+      const panel = document.getElementById("suggestionPanel");
+      if (!input || !panel) return;
+
+      const isFocused = document.activeElement === input;
+      if (!forceOpen && !isFocused) return;
+
+      const query = normalize(input.value);
+      const suggestions = getUniqueSuggestions();
+      const matches = suggestions.filter(source => {
+        if (!query) return source.type === "casket" || source.type === "npc";
+        const fields = [source.label, source.page, ...(source.aliases || [])].map(normalize);
+        return fields.some(field => field.includes(query));
+      }).slice(0, 18);
+
+      if (!matches.length) {
+        panel.innerHTML = `<div class="suggestion-empty">No suggestion found. Press Load to try the exact page name.</div>`;
+        panel.classList.remove("hidden");
+        return;
+      }
+
+      panel.innerHTML = matches.map(source => `
+        <button type="button" class="suggestion-option" data-key="${escapeHtml(source.key)}">
+          ${escapeHtml(source.label || source.page)}
+        </button>
+      `).join("");
+      panel.classList.remove("hidden");
+    }
+
+    function hideSuggestionPanel() {
+      const panel = document.getElementById("suggestionPanel");
+      if (panel) panel.classList.add("hidden");
+    }
+
+    async function chooseSuggestionByKey(key) {
+      const source = suggestionMap.get(key);
+      if (!source) return;
+      document.getElementById("sourceSearch").value = source.label || source.page;
+      const select = document.getElementById("sourceSelect");
+      if (select && [...select.options].some(option => option.value === source.key)) select.value = source.key;
+      hideSuggestionPanel();
+      await loadWikiSource(source);
+    }
+
+    function getOptions() {
+      return {
+        includeWilderness: document.getElementById("includeWilderness").checked,
+        revenantSkulled: document.getElementById("revenantSkulled").checked,
+        revenantOnTask: document.getElementById("revenantOnTask").checked
+      };
+    }
+
+    function setStatus(message, type = "") {
+      const el = document.getElementById("statusBox");
+      el.className = `status-box ${type}`;
+      el.innerHTML = message;
+    }
+
+    function setActionButtons(enabled) {
+      document.getElementById("actionButton").disabled = !enabled;
+      document.getElementById("action10Button").disabled = !enabled;
+      document.getElementById("action100Button").disabled = !enabled;
+    }
+
+    function randomInt(min, max) {
+      min = Number.isFinite(min) ? min : 1;
+      max = Number.isFinite(max) ? max : min;
+      if (max < min) max = min;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function formatNumber(number) {
+      if (!Number.isFinite(number)) number = 0;
+      return Math.round(number).toLocaleString("en-US");
+    }
+
+    function cleanText(text) {
+      return (text || "")
+        .replace(/\[[^\]]*\]/g, "")
+        .replace(/\u00a0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>'"]/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+      }[c]));
+    }
+
+    function iconFileName(itemName) {
+      if (iconOverrides[itemName]) return iconOverrides[itemName];
+      return encodeURIComponent(itemName.replaceAll(" ", "_")).replaceAll("'", "%27");
+    }
+
+    function iconUrl(itemName) {
+      const fileName = iconFileName(itemName);
+      return `https://oldschool.runescape.wiki/images/${fileName.endsWith(".png") ? fileName : fileName + ".png"}`;
+    }
+
+    function itemIconHtml(itemName, extraClass = "") {
+      return `<img class="item-icon ${extraClass}" src="${iconUrl(itemName)}" alt="${escapeHtml(itemName)}" loading="lazy" onerror="this.style.display='none';">`;
+    }
+
+    function rarityClass(rarity) {
+      return String(rarity || "Wiki").replace(/\s+/g, "-").replace(/[^a-zA-Z0-9_-]/g, "");
+    }
+
+    function rollChance(chance) {
+      if (!Number.isFinite(chance) || chance <= 0) return false;
+      return Math.random() < (1 / chance);
+    }
+
+    function rollExclusiveCheck(checks) {
+      const validChecks = (checks || []).filter(item => Number.isFinite(item.chance) && item.chance > 0);
+      if (!validChecks.length) return null;
+      const roll = Math.random();
+      let cumulative = 0;
+      for (const item of validChecks) {
+        cumulative += 1 / item.chance;
+        if (roll < cumulative) return item;
+      }
+      return null;
+    }
+
+    function rollWeightedDrop(table) {
+      const usableTable = table.filter(item => Number.isFinite(item.weight) && item.weight > 0);
+      if (!usableTable.length) return null;
+      const totalWeight = usableTable.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * totalWeight;
+      for (const item of usableTable) {
+        roll -= item.weight;
+        if (roll <= 0) return item;
+      }
+      return usableTable[usableTable.length - 1];
+    }
+
+    function createDrop(item, source = "Main") {
+      const qty = randomInt(item.minQty, item.maxQty);
+      const valueEach = Number.isFinite(item.valueEach) ? item.valueEach : 0;
+      return {
+        name: item.name,
+        qty,
+        rarity: item.rarity || "Wiki",
+        value: qty * valueEach,
+        source,
+        wikiRarityText: item.wikiRarityText || ""
+      };
+    }
+
+    function getRollCount(source) {
+      return randomInt(source.rollsMin || 1, source.rollsMax || source.rollsMin || 1);
+    }
+
+    function simulateAction() {
+      const source = loadedSources[currentSourceKey];
+      if (!source) {
+        setStatus("Load a source before simulating rolls.", "error");
+        return;
+      }
+
+      actionCount++;
+      const drops = [];
+      const rollCount = getRollCount(source);
+
+      (source.alwaysDrops || []).forEach(item => drops.push(createDrop(item, "Always")));
+
+      for (let i = 0; i < rollCount; i++) {
+        const exclusiveDrop = rollExclusiveCheck(source.exclusiveChecks || []);
+        if (exclusiveDrop) {
+          drops.push(createDrop(exclusiveDrop, `Exact 1/${formatNumber(exclusiveDrop.chance)}`));
+        } else {
+          const mainDrop = rollWeightedDrop(source.mainTable || []);
+          if (mainDrop) drops.push(createDrop(mainDrop, rollCount > 1 ? `Main roll ${i + 1}/${rollCount}` : "Main roll"));
+        }
+
+        if (source.specialChecksPerRoll) {
+          (source.specialChecks || []).forEach(item => {
+            if (rollChance(item.chance)) drops.push(createDrop(item, `Special 1/${formatNumber(item.chance)}`));
+          });
+        }
+      }
+
+      if (!source.specialChecksPerRoll) {
+        (source.specialChecks || []).forEach(item => {
+          if (rollChance(item.chance)) drops.push(createDrop(item, `Special 1/${formatNumber(item.chance)}`));
+        });
+      }
+
+      let actionValue = 0;
+      drops.forEach(drop => {
+        actionValue += drop.value;
+        addToCollection(drop);
+        if (drop.value > bestDropValue) {
+          bestDropValue = drop.value;
+          bestDropName = drop.name;
+        }
+      });
+
+      totalValue += actionValue;
+      document.getElementById("actionCount").textContent = formatNumber(actionCount);
+      document.getElementById("totalValue").textContent = `${formatNumber(totalValue)} gp`;
+      document.getElementById("bestDrop").textContent = bestDropName;
+
+      renderLatestDrop(drops, actionValue, rollCount);
+      addToHistory(actionCount, drops, actionValue, rollCount);
+      updateCollectionLog();
+    }
+
+    function simulateMany(amount) {
+      for (let i = 0; i < amount; i++) simulateAction();
+    }
+
+    function addToCollection(drop) {
+      if (!collectionLog[drop.name]) collectionLog[drop.name] = { amount: 0, timesReceived: 0, totalValue: 0 };
+      collectionLog[drop.name].amount += drop.qty;
+      collectionLog[drop.name].timesReceived += 1;
+      collectionLog[drop.name].totalValue += drop.value;
+    }
+
+    function updateCollectionLog() {
+      const tableBody = document.getElementById("collectionLog");
+      tableBody.innerHTML = "";
+      const sortedItems = Object.keys(collectionLog).sort((a, b) => collectionLog[b].totalValue - collectionLog[a].totalValue);
+      sortedItems.forEach(itemName => {
+        const item = collectionLog[itemName];
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><div class="item-cell">${itemIconHtml(itemName, "small")}<span>${escapeHtml(itemName)}</span></div></td>
+          <td>${formatNumber(item.amount)}</td>
+          <td>${formatNumber(item.timesReceived)}</td>
+          <td>${formatNumber(item.totalValue)} gp</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function renderLatestDrop(drops, actionValue, rollCount) {
+      const latestDropDiv = document.getElementById("latestDrop");
+      latestDropDiv.innerHTML = `
+        <h3>Loot value: <span class="valuable">${formatNumber(actionValue)} gp</span></h3>
+        <div class="drop-grid"></div>
+      `;
+      const grid = latestDropDiv.querySelector(".drop-grid");
+      if (!drops.length) {
+        grid.innerHTML = `<div class="drop-item">No loot was rolled. This can happen with some Wiki-parsed tables.</div>`;
+        return;
+      }
+      drops.forEach(drop => {
+        const itemDiv = document.createElement("div");
+        itemDiv.className = `drop-item ${rarityClass(drop.rarity)}`;
+        itemDiv.innerHTML = `
+          <div class="drop-card-content">
+            ${itemIconHtml(drop.name)}
+            <div>
+              <strong>${escapeHtml(drop.name)}</strong> x ${formatNumber(drop.qty)}
+              <span class="pill">${escapeHtml(drop.source)}</span>
+              <br>
+              Rarity: ${escapeHtml(drop.rarity)}
+              ${drop.wikiRarityText ? `<span class="pill">Wiki: ${escapeHtml(drop.wikiRarityText)}</span>` : ""}
+              <br>
+              Value: <span class="valuable">${formatNumber(drop.value)} gp</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(itemDiv);
+      });
+    }
+
+    function addToHistory(actionNumber, drops, actionValue, rollCount) {
+      const historyDiv = document.getElementById("history");
+      const source = loadedSources[currentSourceKey];
+      const label = source?.actionLabel || "Roll";
+      const dropText = drops
+        .map(drop => `<span class="item-cell">${itemIconHtml(drop.name, "small")}<span>${escapeHtml(drop.name)} x ${formatNumber(drop.qty)}</span></span>`)
+        .join("");
+      const entry = document.createElement("div");
+      entry.className = "drop-item";
+      entry.innerHTML = `
+        <strong>${escapeHtml(label)} ${formatNumber(actionNumber)}</strong>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">${dropText || "No loot"}</div>
+        Value: <span class="valuable">${formatNumber(actionValue)} gp</span>
+      `;
+      historyDiv.prepend(entry);
+    }
+
+    function resetSimulator(clearStatus = true) {
+      actionCount = 0;
+      totalValue = 0;
+      bestDropValue = 0;
+      bestDropName = "None";
+      collectionLog = {};
+      document.getElementById("actionCount").textContent = "0";
+      document.getElementById("totalValue").textContent = "0 gp";
+      document.getElementById("bestDrop").textContent = "None";
+      document.getElementById("latestDrop").textContent = currentSourceKey ? "Press the roll button to get your first result." : "Load a source first, then press the roll button.";
+      document.getElementById("history").innerHTML = "";
+      document.getElementById("collectionLog").innerHTML = "";
+      if (clearStatus) setStatus("Simulator reset.", "good");
+    }
+
+    async function reloadCurrentSourceAfterOptionChange() {
+      if (!currentSourceMeta) return;
+      await loadWikiSource(currentSourceMeta, { quiet: false, preserveSearch: true });
+    }
+
+    function setCurrentSource(key, meta) {
+      const source = loadedSources[key];
+      if (!source) return;
+      currentSourceKey = key;
+      currentSourceMeta = meta;
+      document.getElementById("sourceSearch").value = source.label;
+      const select = document.getElementById("sourceSelect");
+      if (select && [...select.options].some(option => option.value === key)) select.value = key;
+      hideSuggestionPanel();
+      document.getElementById("activeSource").textContent = source.label;
+      const actionText = source.actionWord || "Roll";
+      document.getElementById("actionButton").textContent = `${actionText} ${source.shortLabel || source.label}`;
+      document.getElementById("action10Button").textContent = `${actionText} 10`;
+      document.getElementById("action100Button").textContent = `${actionText} 100`;
+      document.getElementById("sourceNote").innerHTML = source.note;
+      setActionButtons(true);
+      resetSimulator(false);
+    }
+
+    async function wikiFetch(params) {
+      const url = new URL(WIKI_API);
+      Object.entries({ origin: "*", format: "json", formatversion: "2", ...params }).forEach(([key, value]) => url.searchParams.set(key, value));
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error(`Wiki request failed: ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.info || data.error.code || "Unknown Wiki API error");
+      return data;
+    }
+
+    async function loadNpcList() {
+      if (npcListLoaded) {
+        setStatus("The full NPC list is already loaded. Start typing in the search box and choose from the suggestions.", "good");
+        return;
+      }
+
+      setStatus("Loading NPC page names from OSRS Wiki categories...", "");
+      document.getElementById("loadListButton").disabled = true;
+      const categories = ["Category:Monsters", "Category:Bosses"];
+      const titles = new Set();
+
+      try {
+        for (const category of categories) {
+          let cmcontinue = null;
+          do {
+            const params = {
+              action: "query",
+              list: "categorymembers",
+              cmtitle: category,
+              cmnamespace: "0",
+              cmtype: "page",
+              cmlimit: "500"
+            };
+            if (cmcontinue) params.cmcontinue = cmcontinue;
+            const data = await wikiFetch(params);
+            (data.query?.categorymembers || []).forEach(page => titles.add(page.title));
+            cmcontinue = data.continue?.cmcontinue || null;
+          } while (cmcontinue);
+        }
+
+        [...titles].forEach(title => registerSuggestion({ label: title, page: title, type: "npc", actionWord: "Kill", rollsMin: 1, rollsMax: 1 }));
+        renderDatalist();
+        npcListLoaded = true;
+        setStatus(`Loaded <strong>${formatNumber(titles.size)}</strong> NPC page names into the dropdown and search suggestions.`, "good");
+      } catch (error) {
+        console.error(error);
+        setStatus(`Could not load the full NPC list. You can still type an exact NPC page name and press “Load”. Error: ${escapeHtml(error.message)}`, "error");
+      } finally {
+        document.getElementById("loadListButton").disabled = false;
+      }
+    }
+
+    async function loadSourceFromSearch() {
+      const input = cleanText(document.getElementById("sourceSearch").value);
+      if (!input) {
+        setStatus("Type or select a source first, for example: Zulrah or Reward casket (hard).", "error");
+        return;
+      }
+      const match = suggestionMap.get(normalize(input));
+      const meta = match || { label: input, page: input, type: "npc", actionWord: "Kill", rollsMin: 1, rollsMax: 1 };
+      await loadWikiSource(meta);
+    }
+
+    async function loadWikiSource(meta, options = {}) {
+      const pagesToTry = [meta.page, ...(meta.fallbackPages || [])];
+      const searchLabel = meta.label || meta.page;
+      if (!options.quiet) setStatus(`Loading <strong>${escapeHtml(searchLabel)}</strong> from the OSRS Wiki...`, "");
+      document.getElementById("loadSourceButton").disabled = true;
+      setActionButtons(false);
+
+      let lastError = null;
+      try {
+        for (const page of pagesToTry) {
+          try {
+            const data = await wikiFetch({ action: "parse", page, prop: "text", redirects: "1" });
+            const realTitle = data.parse?.title || page;
+            const html = data.parse?.text || "";
+            const parsedSource = parseWikiSource(realTitle, html, { ...meta, loadedPage: realTitle }, getOptions());
+            if (!parsedSource.mainTable.length && !parsedSource.alwaysDrops.length && !parsedSource.specialChecks.length) {
+              throw new Error("No recognizable drop/reward table was found on that page.");
+            }
+
+            const key = `wiki:${realTitle}:${meta.type || "npc"}`;
+            loadedSources[key] = parsedSource;
+            currentSourceMeta = { ...meta, page: realTitle };
+            registerSuggestion({ ...meta, label: parsedSource.label, page: realTitle });
+            renderDatalist();
+            setCurrentSource(key, currentSourceMeta);
+            setStatus(
+              `Loaded <strong>${escapeHtml(parsedSource.label)}</strong>: ${parsedSource.alwaysDrops.length} guaranteed rows, ${(parsedSource.exclusiveChecks || []).length} exact checks, ${parsedSource.mainTable.length} main rows, ${parsedSource.specialChecks.length} special checks. ${parsedSource.skippedRows ? `${parsedSource.skippedRows} conditional row(s) skipped.` : ""}`,
+              "good"
+            );
+            return;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error("Could not load source.");
+      } catch (error) {
+        console.error(error);
+        setStatus(`Could not load that source. Try an exact OSRS Wiki page name. Error: ${escapeHtml(error.message)}`, "error");
+        if (currentSourceKey) setActionButtons(true);
+      } finally {
+        document.getElementById("loadSourceButton").disabled = false;
+      }
+    }
+
+    function parseWikiSource(title, html, meta, options) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const tables = Array.from(doc.querySelectorAll("table"));
+      const alwaysDrops = [];
+      const mainTable = [];
+      const specialChecks = [];
+      const seen = new Set();
+      const selectedRateHeaders = new Set();
+      let skippedRows = 0;
+      let clueUniqueRows = 0;
+      const isRevenant = /revenant/i.test(title) || /revenant/i.test(meta.label || "") || /revenant/i.test(meta.page || "");
+      const sourceType = meta.type || (title.toLowerCase().includes("reward casket") ? "casket" : "npc");
+
+      tables.forEach(table => {
+        const headerRow = findHeaderRow(table);
+        if (!headerRow) return;
+        const headers = getHeaderTexts(headerRow);
+        const itemIdx = findHeaderIndex(headers, ["item", "reward"]);
+        const qtyIdx = findHeaderIndex(headers, ["quantity", "qty", "amount"]);
+        const priceIdx = findHeaderIndex(headers, ["price", "ge", "value"]);
+        const rateIdx = chooseRateIndex(headers, { isRevenant, ...options });
+
+        if (itemIdx < 0 || qtyIdx < 0 || rateIdx < 0) return;
+        selectedRateHeaders.add(headers[rateIdx] || "rarity");
+
+        const context = getTableContext(table);
+        // For NPCs, tables labelled unique/special/etc. are usually independent special checks.
+        // For clue caskets, "Unique rewards" are normal casket rewards and should stay in the main table.
+        const isTertiaryTable = sourceType === "casket"
+          ? isCasketTertiaryContext(context)
+          : /tertiary|pet|clue|jar|special|extra|rare drop|unique|purple|mega-rare/i.test(context);
+        const rows = Array.from(table.querySelectorAll("tr")).slice(Array.from(table.querySelectorAll("tr")).indexOf(headerRow) + 1);
+
+        rows.forEach(row => {
+          const cells = Array.from(row.children).filter(cell => cell.tagName === "TD" || cell.tagName === "TH");
+          if (cells.length <= Math.max(itemIdx, qtyIdx, rateIdx)) return;
+
+          const rowText = cleanText(row.textContent);
+          const tableAndRowContext = `${context} ${rowText}`;
+          const wildernessSpecial = isWildernessSpecific(tableAndRowContext);
+
+          // Do not remove the normal revenant table just because revenants live in the Wilderness.
+          // The Wilderness toggle is meant for extra wilderness-only rows on otherwise non-wilderness NPCs.
+          if (wildernessSpecial && !options.includeWilderness && !isRevenant) {
+            skippedRows++;
+            return;
+          }
+
+          // Revenant Slayer-only rows should only be available when the user ticks on-task.
+          // This catches rows/tables like "Slayer" and notes such as "Only dropped while on a slayer assignment".
+          if (isRevenant && !options.revenantOnTask && isRevenantSlayerOnly(tableAndRowContext)) {
+            skippedRows++;
+            return;
+          }
+
+          const itemName = extractItemName(cells[itemIdx]);
+          if (!itemName || /nothing|n\/a|not sold|subtotal|total|average/i.test(itemName)) return;
+
+          const qty = parseQuantity(cleanText(cells[qtyIdx]?.textContent));
+          const rarityText = cleanText(cells[rateIdx]?.textContent) || "Wiki";
+          if (!rarityText || /not applicable|n\/a|—|-/.test(rarityText)) return;
+
+          const priceText = priceIdx >= 0 && cells[priceIdx] ? cleanText(cells[priceIdx].textContent) : "";
+          const valueTotal = parseMoney(priceText);
+          const avgQty = (qty.min + qty.max) / 2;
+          let valueEach = valueTotal > 0 && avgQty > 0 ? Math.round(valueTotal / avgQty) : 0;
+          if (/^coins$/i.test(itemName)) valueEach = 1;
+
+          const rate = parseRate(rarityText, sourceType);
+          const uniqueKey = `${itemName}|${qty.min}|${qty.max}|${rarityText}|${context}`;
+          if (seen.has(uniqueKey)) return;
+          seen.add(uniqueKey);
+
+          const item = {
+            name: itemName,
+            minQty: qty.min,
+            maxQty: qty.max,
+            rarity: rate.label,
+            valueEach,
+            wikiRarityText: rarityText
+          };
+
+          const specialByName = /clue scroll|pet |pet$|jar of|champion|long bone|curved bone|visage|heads|mutagen|metamorphic dust/i.test(itemName);
+          const allowedMasterClue = /clue scroll \(master\)|master clue scroll/i.test(itemName);
+          const isCasketClueScrollRow = sourceType === "casket" && /clue scroll/i.test(itemName);
+          const casketTertiaryRow = sourceType === "casket" && (isTertiaryTable || isCasketClueScrollRow);
+          if (sourceType === "casket" && isCasketUniqueContext(context) && !casketTertiaryRow) clueUniqueRows++;
+
+          // Clue casket unique reward tables are normal rewards, not tertiary rolls.
+          // Only the master clue scroll tertiary reward is kept as an independent special check.
+          if (casketTertiaryRow && !allowedMasterClue) {
+            skippedRows++;
+            return;
+          }
+
+          if (rate.always) {
+            alwaysDrops.push(item);
+          } else if (sourceType === "casket" && allowedMasterClue && rate.chanceDenominator) {
+            specialChecks.push({ ...item, chance: rate.chanceDenominator });
+          } else if (sourceType !== "casket" && (isTertiaryTable || specialByName) && rate.chanceDenominator) {
+            specialChecks.push({ ...item, chance: rate.chanceDenominator });
+          } else {
+            mainTable.push({ ...item, weight: rate.weight });
+          }
+        });
+      });
+
+      // If the page only exposes individual chance rows, convert non-obvious special rows into a weighted main table.
+      if (!mainTable.length && specialChecks.length) {
+        specialChecks.slice(0, 80).forEach(item => {
+          if (!/pet|clue|jar|ornament kit|metamorphic|olmlet|lil' zik/i.test(item.name)) {
+            mainTable.push({ ...item, weight: Math.max(0.000001, 1 / item.chance) });
+          }
+        });
+      }
+
+      const rollsMin = meta.rollsMin || (sourceType === "npc" ? 1 : 3);
+      const rollsMax = meta.rollsMax || rollsMin;
+      const actionWord = meta.actionWord || (sourceType === "npc" ? "Kill" : "Open");
+      const label = meta.label || title;
+
+      const parsedSource = {
+        label,
+        shortLabel: shortActionName(label),
+        pageTitle: title,
+        sourceType,
+        actionWord,
+        actionLabel: actionWord,
+        rollsMin,
+        rollsMax,
+        specialChecksPerRoll: false,
+        skippedRows,
+        note: buildSourceNote(label, title, meta, options, skippedRows, rollsMin, rollsMax),
+        alwaysDrops,
+        exclusiveChecks: [],
+        mainTable,
+        specialChecks
+      };
+
+      applyExactRevenantOverrides(parsedSource, options);
+      return parsedSource;
+    }
+
+    function applyExactRevenantOverrides(source, options) {
+      const sourceKey = normalize(source.pageTitle || source.label || "");
+      const isExactRevenant = Object.prototype.hasOwnProperty.call(REVENANT_WEAPON_RATES, sourceKey);
+      if (!isExactRevenant) return source;
+
+      const stateKey = `${options.revenantSkulled ? "skulled" : "unskulled"}_${options.revenantOnTask ? "on_task" : "off_task"}`;
+      const weaponChance = REVENANT_WEAPON_RATES[sourceKey]?.[stateKey];
+      if (!weaponChance) return source;
+
+      const weaponNameSet = new Set(REVENANT_WEAPON_NAMES.map(normalize));
+      const valueByName = new Map();
+
+      function matchesWeapon(item) {
+        return weaponNameSet.has(normalize(item.name));
+      }
+
+      function shouldRemoveWhenSkulled(item) {
+        return options.revenantSkulled && REVENANT_SKULLED_EXCLUDED_NAMES.has(normalize(item.name));
+      }
+
+      function rememberValue(item) {
+        const key = normalize(item.name);
+        if ((matchesWeapon(item) || shouldRemoveWhenSkulled(item)) && Number.isFinite(item.valueEach)) {
+          valueByName.set(key, item.valueEach);
+        }
+      }
+
+      (source.mainTable || []).forEach(rememberValue);
+      (source.specialChecks || []).forEach(rememberValue);
+      (source.alwaysDrops || []).forEach(rememberValue);
+
+      // Remove any generically parsed weapon rows, then add exact mutually-exclusive checks.
+      // Also remove skulled-impossible low rare rows such as Dragon med helm.
+      source.mainTable = (source.mainTable || []).filter(item => !matchesWeapon(item) && !shouldRemoveWhenSkulled(item));
+      source.specialChecks = (source.specialChecks || []).filter(item => !matchesWeapon(item) && !shouldRemoveWhenSkulled(item));
+      source.exclusiveChecks = source.exclusiveChecks || [];
+
+      REVENANT_WEAPON_NAMES.forEach(name => {
+        source.exclusiveChecks.push({
+          name,
+          minQty: 1,
+          maxQty: 1,
+          rarity: "Very Rare",
+          valueEach: valueByName.get(normalize(name)) || 0,
+          wikiRarityText: `Exact revenant weapon rate: 1/${weaponChance}`,
+          chance: weaponChance
+        });
+      });
+
+      const stateLabel = `${options.revenantSkulled ? "skulled" : "unskulled"}, ${options.revenantOnTask ? "on task" : "off task"}`;
+      const removedText = options.revenantSkulled ? " Dragon med helm, ancient emblem, and ancient totem are removed while skulled." : "";
+      source.note = `${source.note} Exact revenant weapon override active for ${escapeHtml(source.label)} (${stateLabel}): each weapon is 1/${formatNumber(weaponChance)}.${removedText}`;
+      return source;
+    }
+
+    function findHeaderRow(table) {
+      const rows = Array.from(table.querySelectorAll("tr"));
+      return rows.find(row => {
+        const headers = getHeaderTexts(row);
+        return headers.some(h => /item|reward/i.test(h)) && headers.some(h => /quantity|qty|amount/i.test(h));
+      });
+    }
+
+    function getHeaderTexts(row) {
+      return Array.from(row.children).map(cell => cleanText(cell.textContent).toLowerCase());
+    }
+
+    function findHeaderIndex(headers, keywords) {
+      return headers.findIndex(h => keywords.some(keyword => h.includes(keyword)));
+    }
+
+    function chooseRateIndex(headers, context) {
+      const candidates = headers.map((h, i) => ({ h, i })).filter(({ h }) => {
+        return /rarity|chance|rate|drop rate|unskulled|skulled|task|off-task|on-task/.test(h);
+      });
+      if (!candidates.length) return -1;
+
+      if (context.isRevenant) {
+        let best = null;
+        for (const candidate of candidates) {
+          const h = candidate.h.replace(/\s+/g, " ");
+          const isUnskulled = /unskulled|not skulled/.test(h);
+          const isSkulled = /(^|[^a-z])skulled/.test(h) && !isUnskulled;
+          const isOnTask = /on task|on-task|slayer task|slayer assignment|task/.test(h) && !/off task|off-task|not on task/.test(h);
+          const isOffTask = /off task|off-task|not on task/.test(h);
+          let score = 0;
+          if (/rarity|chance|rate|drop/.test(h)) score += 3;
+
+          // Prefer the exact state combination first, then fall back gracefully.
+          if (context.revenantSkulled ? isSkulled : isUnskulled) score += 30;
+          if (context.revenantOnTask ? isOnTask : isOffTask) score += 30;
+          if (context.revenantSkulled && isUnskulled) score -= 25;
+          if (!context.revenantSkulled && isSkulled) score -= 25;
+          if (context.revenantOnTask && isOffTask) score -= 25;
+          if (!context.revenantOnTask && isOnTask) score -= 25;
+
+          // A combined "skulled on task" column should beat a plain "skulled" column.
+          if (context.revenantSkulled && context.revenantOnTask && isSkulled && isOnTask) score += 20;
+          if (context.revenantSkulled && !context.revenantOnTask && isSkulled && isOffTask) score += 20;
+          if (!context.revenantSkulled && context.revenantOnTask && isUnskulled && isOnTask) score += 20;
+          if (!context.revenantSkulled && !context.revenantOnTask && isUnskulled && isOffTask) score += 20;
+
+          if (!best || score > best.score) best = { ...candidate, score };
+        }
+        if (best) return best.i;
+      }
+
+      const standard = candidates.find(({ h }) => /rarity|chance|rate/.test(h));
+      return standard ? standard.i : candidates[0].i;
+    }
+
+    function isRevenantSlayerOnly(text) {
+      return /\bslayer\b|krystilia|slayer assignment|on a slayer assignment/i.test(text);
+    }
+
+    function isCasketUniqueContext(text) {
+      return /clue uniques?|unique rewards?|shared treasure trail items|mega-rare|very rare/i.test(text)
+        && !isCasketTertiaryContext(text);
+    }
+
+    function isWildernessSpecific(text) {
+      return /wilderness slayer cave|wilderness-only|wilderness only|while in the wilderness|inside the wilderness|wilderness tertiary|larran'?s key|wilderness weapons|revenant weapon drop table/i.test(text);
+    }
+
+    function isCasketTertiaryContext(text) {
+      // For clue caskets, headings such as "Easy clue uniques" and "Medium clue uniques"
+      // are normal reward pools. Only a real Tertiary/Extra section is treated as separate.
+      const t = cleanText(text).toLowerCase();
+      if (/unique|standard table|shared treasure|weapons and armour|runes|food|resources|mega-rare|very rare/.test(t)) return false;
+      return /\btertiary\b|\btertiaries\b|extra roll|additional roll/.test(t);
+    }
+
+    function buildSourceNote(label, title, meta, options, skippedRows, rollsMin, rollsMax) {
+      const bits = [];
+      bits.push(options.includeWilderness ? "Wilderness loot included" : "Wilderness loot excluded");
+      if (/revenant/i.test(label) || /revenant/i.test(title)) {
+        bits.push(options.revenantSkulled ? "skulled" : "unskulled");
+        bits.push(options.revenantOnTask ? "on task" : "off task");
+      }
+      if (skippedRows) bits.push(`${formatNumber(skippedRows)} conditional row(s) skipped`);
+      return `Loaded from <strong>${escapeHtml(title)}</strong>. ${escapeHtml(bits.join(" · "))}.`;
+    }
+
+    function shortActionName(label) {
+      return label
+        .replace(/ rewards$/i, "")
+        .replace(/^Reward casket /i, "casket ")
+        .trim();
+    }
+
+    function getTableContext(table) {
+      let text = cleanText(table.querySelector("caption")?.textContent || "");
+      let node = table.previousElementSibling;
+      let steps = 0;
+      while (node && steps < 12) {
+        if (/^H[1-6]$/.test(node.tagName)) {
+          text = `${cleanText(node.textContent)} ${text}`;
+          break;
+        }
+        if (node.classList && (node.classList.contains("mw-heading") || node.querySelector?.("h2,h3,h4"))) {
+          text = `${cleanText(node.textContent)} ${text}`;
+          break;
+        }
+        node = node.previousElementSibling;
+        steps++;
+      }
+      return text;
+    }
+
+    function extractItemName(cell) {
+      if (!cell) return "";
+      const links = Array.from(cell.querySelectorAll("a"));
+      for (const link of links) {
+        const title = link.getAttribute("title") || cleanText(link.textContent);
+        if (!title) continue;
+        if (/^(File|Image|Category):/i.test(title)) continue;
+        if (/coins icon|inventory|exchange|edit|ge price/i.test(title)) continue;
+        return cleanText(title.replace(/\s*\(page does not exist\)\s*/i, ""));
+      }
+      const clone = cell.cloneNode(true);
+      clone.querySelectorAll("sup, .reference, img, style, script").forEach(el => el.remove());
+      return cleanText(clone.textContent).split("\n")[0];
+    }
+
+    function parseQuantity(text) {
+      const t = cleanText(text).replace(/,/g, "");
+      const range = t.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)/i);
+      if (range) return { min: Math.max(1, Math.floor(Number(range[1]))), max: Math.max(1, Math.floor(Number(range[2]))) };
+      const single = t.match(/\d+(?:\.\d+)?/);
+      if (single) {
+        const n = Math.max(1, Math.floor(Number(single[0])));
+        return { min: n, max: n };
+      }
+      return { min: 1, max: 1 };
+    }
+
+    function parseMoney(text) {
+      const t = cleanText(text).toLowerCase().replace(/,/g, "");
+      if (!t || /not sold|n\/a|untradeable|unknown|—|-/.test(t)) return 0;
+      const match = t.match(/(\d+(?:\.\d+)?)\s*([kmb])?/i);
+      if (!match) return 0;
+      let value = Number(match[1]);
+      const suffix = match[2];
+      if (suffix === "k") value *= 1000;
+      if (suffix === "m") value *= 1000000;
+      if (suffix === "b") value *= 1000000000;
+      return Math.round(value);
+    }
+
+    function parseRate(text, sourceType) {
+      const t = cleanText(text).toLowerCase().replace(/,/g, "");
+      if (/always|guaranteed|100%/.test(t)) return { always: true, weight: 1, label: "Always", chanceDenominator: 1 };
+
+      // Handles exact fractions such as 1/512 and compound text where the first fraction is the useful value.
+      const frac = t.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (frac) {
+        const numerator = Number(frac[1]);
+        const denominator = Number(frac[2]);
+        if (numerator > 0 && denominator > 0) return rateFromDenominator(denominator / numerator, sourceType);
+      }
+
+      const oneIn = t.match(/1\s*(?:in|:)\s*(\d+(?:\.\d+)?)/);
+      if (oneIn) return rateFromDenominator(Number(oneIn[1]), sourceType);
+
+      const percent = t.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (percent) {
+        const pct = Number(percent[1]);
+        if (pct >= 100) return { always: true, weight: 1, label: "Always", chanceDenominator: 1 };
+        const chanceDenominator = pct > 0 ? 100 / pct : null;
+        if (chanceDenominator) return rateFromDenominator(chanceDenominator, sourceType);
+      }
+
+      // Some Wiki rows use qualitative rarity only.
+      if (/very rare/.test(t)) return { always: false, weight: sourceType === "npc" ? 1 : 1, label: "Very Rare", chanceDenominator: null };
+      if (/rare/.test(t)) return { always: false, weight: sourceType === "npc" ? 3 : 3, label: "Rare", chanceDenominator: null };
+      if (/uncommon/.test(t)) return { always: false, weight: 10, label: "Uncommon", chanceDenominator: null };
+      if (/common/.test(t)) return { always: false, weight: 30, label: "Common", chanceDenominator: null };
+
+      return { always: false, weight: 5, label: "Wiki", chanceDenominator: null };
+    }
+
+    function rateFromDenominator(chanceDenominator, sourceType) {
+      const denom = Math.max(Number(chanceDenominator) || 1, 1);
+      return {
+        always: denom <= 1,
+        weight: Math.max(0.000001, 1 / denom),
+        label: denom >= 1024 ? "Very Rare" : denom >= 128 ? "Rare" : denom >= 32 ? "Uncommon" : "Common",
+        chanceDenominator: denom
+      };
+    }
+
+    document.getElementById("sourceSearch").addEventListener("input", () => updateSuggestionPanel(true));
+    document.getElementById("sourceSearch").addEventListener("focus", () => updateSuggestionPanel(true));
+    document.getElementById("sourceSearch").addEventListener("keydown", async (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        await loadSourceFromSearch();
+      }
+      if (event.key === "Escape") {
+        hideSuggestionPanel();
+      }
+    });
+
+    document.getElementById("suggestionPanel").addEventListener("mousedown", async (event) => {
+      const button = event.target.closest(".suggestion-option");
+      if (!button) return;
+      event.preventDefault();
+      await chooseSuggestionByKey(button.dataset.key);
+    });
+
+    document.addEventListener("mousedown", (event) => {
+      if (!event.target.closest(".search-wrap")) hideSuggestionPanel();
+    });
+
+    init();
+  </script>
+</body>
+</html>
